@@ -22,12 +22,13 @@ end
 % dense matrices, we compute this product by working associatively from
 % right to left
 
-QtauX = problem_data.sqrt_Omega_T' * orthogonal_projection(problem_data.sqrt_Omega_T * X, problem_data, use_Cholesky);
-
-if isfield(problem_data,'lmMat')
+% If using additional landmark data, use the marginalized data matrix,
+% otherwise apply standard SE-Sync procedure.
+if isfield(problem_data,'Q_bt')
     % Rotation, Translation, Landmark data.
-    QX = problem_data.ConLap*X + QtauX + problem_data.lmMat*X;
+    QX = problem_data.ConLap*X + problem_data.Q_bt*X;
 else
+    QtauX = problem_data.sqrt_Omega_T' * orthogonal_projection(problem_data.sqrt_Omega_T * X, problem_data, use_Cholesky);
     QX = problem_data.ConLap*X + QtauX;
 end
 

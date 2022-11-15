@@ -10,8 +10,8 @@ classdef lm_data
     end
     methods
         % get size
-        function [n,m] = size(self)
-            [n,m] = size(self.Q_r);
+        function [sz] = size(self)
+            sz = self.sz;
         end
         % Contructor, stores matrices and performs decomposition of M3
         function self = lm_data(M1,M2,M3)

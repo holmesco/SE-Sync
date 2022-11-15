@@ -17,7 +17,7 @@ if isfield(measurements,'lmFlag') && ~isempty(measurements.lmFlag)
     problem_data = construct_problem_data(measurements_pg);
     % Add problem data for landmark measurements
     lmDataTime = tic;
-    Np = max(measurements_pg.edges(:,1));        % Number of P   oses
+    Np = max(measurements_pg.edges(:,1));        % Number of Poses
     Nl = max(measurements_lm.edges(:,2))-Np;     % Number of Landmarks
     problem_data.lmMat = construct_lm_data(measurements_lm,Np, Nl);
     fprintf('Computed Landmark Information:\t%g secs\n',toc(lmDataTime))
