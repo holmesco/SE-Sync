@@ -294,7 +294,8 @@ end
 fprintf('\n\nINITIALIZATION:\n\n');
 disp('Constructing auxiliary data matrices from raw measurements...');
 aux_time_start = tic();
-problem_data = construct_problem_data(measurements);
+% problem_data = construct_problem_data(measurements);
+problem_data = landmark_wrapper(measurements);
 auxiliary_matrix_construction_time = toc(aux_time_start);
 fprintf('Auxiliary data matrix construction finished.  Elapsed computation time: %g seconds\n\n', auxiliary_matrix_construction_time);
 

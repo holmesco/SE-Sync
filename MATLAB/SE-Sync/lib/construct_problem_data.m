@@ -40,6 +40,8 @@ function problem_data = construct_problem_data(measurements)
 %     row of A.
 % L:  The lower-triangular Cholesky factor of the reduced translational
 %     weight graph Laplacian.
+% p:  Minimum degree ordering permutation vector for above Cholesky
+%     Factorization.
 % Omega:  The diagonal matrix of translational matrix precisions (see eq.
 %     (23) in the paper).
 % T:  The sparse matrix of translational observations definedin equation 
@@ -94,9 +96,13 @@ problem_data.LWtau = LWtau;
 
 
 % Construct the Cholesky factor for the reduced translational weight graph
-% Laplacian
+% Laplacian 
+% CTH modified to minimize fill in (return permutation matrix), because
+% running into memory issues for large problems
 tic();
-problem_data.L = chol(LWtau(1:end-1, 1:end-1), 'lower');
+% [problem_data.L,flag,problem_data.p] = chol(LWtau(1:end-1, 1:end-1), 'lower','vector');
+% [problem_data.L] = chol(LWtau(1:end-1, 1:end-1), 'lower');
+
 t = toc();
 fprintf('Computed lower-triangular factor of reduced translational weight graph Laplacian in %g seconds\n', t);
 

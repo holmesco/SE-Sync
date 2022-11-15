@@ -24,8 +24,12 @@ end
 
 QtauX = problem_data.sqrt_Omega_T' * orthogonal_projection(problem_data.sqrt_Omega_T * X, problem_data, use_Cholesky);
 
-
-QX = problem_data.ConLap*X + QtauX;
+if isfield(problem_data,'lmMat')
+    % Rotation, Translation, Landmark data.
+    QX = problem_data.ConLap*X + QtauX + problem_data.lmMat*X;
+else
+    QX = problem_data.ConLap*X + QtauX;
+end
 
 end
 

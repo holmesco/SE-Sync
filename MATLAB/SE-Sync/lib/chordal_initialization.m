@@ -29,14 +29,27 @@ function [Rchordal, tchordal] = chordal_initialization(measurements)
 
 % Copyright (C) 2016 by David M. Rosen
 
-d = length(measurements.t{1});
-n = max(max(measurements.edges));
-m = size(measurements.edges, 1);
+% Split up pose graph and landmark measurements
+if isfield(measurements,'lmFlag') && ~isempty(measurements.lmFlag)
+    lmFlag = measurements.lmFlag;
+    % Split the data 
+    fnames = fieldnames(measurements);
+    for iName = 1:length(fnames)
+        fname = fnames{iName};
+        measurements_pg.(fname) = measurements.(fname)(~lmFlag,:);
+    end
+else
+    measurements_pg = measurements;
+end
+
+d = length(measurements_pg.t{1});
+n = max(max(measurements_pg.edges));
+m = size(measurements_pg.edges, 1);
 
 if nargout > 1
-    [B3, B2, B1] = construct_B_matrices(measurements);
+    [B3, B2, B1] = construct_B_matrices(measurements_pg);
 else
-    B3 = construct_B_matrices(measurements);
+    B3 = construct_B_matrices(measurements_pg);
 end
 
 
