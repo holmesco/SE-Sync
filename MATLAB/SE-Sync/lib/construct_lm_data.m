@@ -27,6 +27,9 @@ vals = [-ones(nEdges,1); ones(nEdges,1)];
 B_lm = sparse(rows, set, vals, Np + Nl, nEdges);
 % Construct weighted incidence matrix for landmark part
 V_lm = B_lm.*weight_sqr;
+% "Edge Leaving" part of incidence matrix
+B_lm_1 = sparse(rows(1:nEdges), set(1:nEdges), vals(1:nEdges), Np, nEdges);
+V_lm_1 = -B_lm_1.*weight_sqr;
 % Loop over landmarks and construct matrices
 curEdge = 1;
 nextEdge = 1;
@@ -48,11 +51,12 @@ for l = 1 : Nl
     % Pose part of landmark incidence matrix and reduced incidence
     % matrix (weighted)
     V_p_r_l = V_lm(2:Np,set);
-    % Compute kronecker product as permutation (and sparsely)
-%     tmp = mat2cell(m_ij(:,set),3,ones(1,deg));
-%     Y{l} = sparse(blkdiag(tmp{:}));
-%     V_p_l = V_lm(1:Np, set);
-%     Vpl_Y = kron(V_p_l,speye(3))*Y{l};
+    % Compute kronecker product as sparesly to avoid costly implementation
+    % Original Code:
+    %     tmp = mat2cell(m_ij(:,set),3,ones(1,deg));
+    %     Y{l} = sparse(blkdiag(tmp{:}));
+    %     V_p_l = V_lm(1:Np, set);
+    %     Vpl_Y = kron(V_p_l,speye(3))*Y{l};
     rows = ones(3,1)*((edges(set,1)-1)*3)' + [1;2;3]*ones(1,deg);
     cols = ones(3,1)*(1:deg);
     Vpl_Y = -sparse(rows(:),cols(:),m_set_wght(:),Np*3,deg);
@@ -94,13 +98,25 @@ M3 = M3 + V_p_t_r*V_p_t_r';
 problem_data.Q_bt = lm_data(M1,M2,M3);
 fprintf('Done constructing landmark-marginalized data matrices in %g seconds\n', toc);
 
-%% Construct Laplacian (for solution recovery)
-tic
-problem_data.V_s = [[V_p_t; sparse(Nl,nEdges)],V_lm];
-problem_data.L_s = problem_data.V_s*problem_data.V_s';
-problem_data.tm = [measurements_pg.t',measurements_lm.t'];
-problem_data.Np = Np;
-problem_data.Nl = Nl;
+%% Compute Matrices for translation recovery
+tic;
+% Combine edges
+edges = [measurements_pg.edges;measurements_lm.edges];
+nEdgesAll = size(edges,1);
+% Combine data and weights
+tm = [[measurements_pg.t{:}],[measurements_lm.t{:}]];
+weights_sqr = sqrt([[measurements_pg.tau{:}],[measurements_lm.tau{:}]]);
+tm_wght = tm.*weights_sqr;
+% Build V_p_bar*Y_s sparsely
+rows = ones(3,1)*((edges(:,1)-1)*3)' + [1;2;3]*ones(1,nEdgesAll);
+cols = ones(3,1)*(1:nEdgesAll);
+Vpbar_Y = sparse(rows(:),cols(:),tm_wght(:),Np*3,nEdgesAll);
+% Make weighted incidence matrix
+V_s = [[V_p_t; sparse(Nl,nEdges)],V_lm];
+VpBar_Y_Vst = Vpbar_Y*V_s';
+% Construct Laplacian and store
+problem_data.L_s = V_s*V_s';
+problem_data.VpBar_Y_Vst = VpBar_Y_Vst;
 fprintf('Done constructing auxiliary data matrices: \t%g\n', toc);
 
 end

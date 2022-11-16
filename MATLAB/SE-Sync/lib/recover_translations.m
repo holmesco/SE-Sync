@@ -16,10 +16,7 @@ function t = recover_translations(R, problem_data)
 %
 % t = - R * V' * LWtau^pinv
 if isfield(problem_data,'Q_bt')
-    V_sp = problem_data.V_s(1:problem_data.Np,:);
-    V_sp_bar = kron(V_sp, speye(3));
-    Y_s = matlab.internal.math.blkdiag(problem_data.tm{:});
-    b = problem_data.V_s*Y_s'*V_sp_bar'*R';
+    b = problem_data.VpBar_Y_Vst'*R';
     t = lsqminnorm(problem_data.L_s,b)';
 else
     t = - (problem_data.LWtau \ (problem_data.V * R'))';
