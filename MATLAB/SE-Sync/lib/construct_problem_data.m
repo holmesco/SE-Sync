@@ -58,6 +58,7 @@ function problem_data = construct_problem_data(measurements)
 % If landmark flag is available, split the measurement into pose graph and
 % landmakr measurements
 if isfield(measurements,'lmFlag') && ~isempty(measurements.lmFlag)
+    tic;
     lmFlag = measurements.lmFlag;
     % Split the data 
     fnames = fieldnames(measurements);
@@ -66,68 +67,98 @@ if isfield(measurements,'lmFlag') && ~isempty(measurements.lmFlag)
         measurements_pg.(fname) = measurements.(fname)(~lmFlag,:);
         measurements_lm.(fname) = measurements.(fname)(lmFlag,:);
     end
-    % Generate Problem Data
-    problem_data = construct_lm_data(measurements_lm, measurements_pg);
+    % Get number of poses and landmarks 
+    Np = max(measurements_pg.edges(:,1));        % Number of Poses
+    Nl = max(measurements_lm.edges(:,2))-Np;     % Number of Landmarks
+    
+    % Pose graph data matrices
+    [M1pg, M2pg, M3pg, V_p_t] = construct_pg_data(measurements_pg, Np);
+    % Landmark graph data matrices
+    [M1lm, M2lm, M3lm, V_lm] = construct_lm_data(measurements_lm, Np, Nl);
+    
+    % Create implicit data object. This avoids creating a dense Q matrix, and
+    % allows us to exploit sparsity when the number of poses is large.
+    Q_bt = lm_data(M1pg+M1lm,M2pg+M2lm,M3pg+M3lm);
+    fprintf('Done constructing landmark-marginalized data matrices in %g seconds\n', toc);
+    
+    % Construct connection Laplacian for the rotational measurements
+    tic();
+    problem_data.ConLap = construct_connection_Laplacian(measurements_pg);
+    t = toc();
+    fprintf('Constructed rotational connection Laplacian in %g seconds\n', t);
+    
+    % Auxiliary matrix generation
+    [L_s, VpBar_Y_Vst] = construct_aux_matrices(measurements_pg, measurements_lm,...
+                          V_p_t, V_lm, Np, Nl);
+    fprintf('Done constructing auxiliary data matrices: \t%g\n', toc);
+    
+    % Collect data in problem_data struct
+    problem_data.d = length(measurements_pg.t{1});
+    problem_data.n = max(max(measurements_pg.edges));
+    problem_data.m = size(measurements_pg.edges, 1);
+    problem_data.Q_bt = Q_bt;
+    problem_data.L_s = L_s;
+    problem_data.VpBar_Y_Vst = VpBar_Y_Vst;
+
 else
-    measurements_pg = measurements;
-end
+%     measurements_pg = measurements;
+    % Set additional variables
+    problem_data.d = length(measurements.t{1});
+    problem_data.n = max(max(measurements.edges));
+    problem_data.m = size(measurements.edges, 1);
 
-% Set additional variables
-problem_data.d = length(measurements_pg.t{1});
-problem_data.n = max(max(measurements_pg.edges));
-problem_data.m = size(measurements_pg.edges, 1);
-
-% Construct connection Laplacian for the rotational measurements
-tic();
-problem_data.ConLap = construct_connection_Laplacian(measurements_pg);
-t = toc();
-fprintf('Constructed rotational connection Laplacian in %g seconds\n', t);
-
-% Construct the oriented incidence matrix for the underlying directed graph
-% of measurements
-tic();
-problem_data.A = construct_incidence_matrix(measurements_pg);
-t = toc();
-fprintf('Constructed oriented incidence matrix in %g seconds\n', t);
-
-% Construct the reduced oriented incidence matrix
-problem_data.Ared = problem_data.A(1:problem_data.n-1, :);
-
-tic();
-[T, Omega] = construct_translational_matrices(measurements_pg);
-V = construct_V_matrix(measurements_pg);
-t = toc();
-fprintf('Constructed translational observation and measurement precision matrices in %g seconds\n', t);
-
-problem_data.T = T;
-problem_data.Omega = Omega;
-problem_data.V = V;
+    % Construct connection Laplacian for the rotational measurements
+    tic();
+    problem_data.ConLap = construct_connection_Laplacian(measurements);
+    t = toc();
+    fprintf('Constructed rotational connection Laplacian in %g seconds\n', t);
 
 
-% Construct the Laplacian for the translational weight graph
-tic();
-LWtau = problem_data.A * problem_data.Omega * problem_data.A';
-t = toc();
-fprintf('Constructed Laplacian for the translational weight graph in %g seconds\n', t);
-problem_data.LWtau = LWtau;
+    % Construct the oriented incidence matrix for the underlying directed graph
+    % of measurements
+    tic();
+    problem_data.A = construct_incidence_matrix(measurements);
+    t = toc();
+    fprintf('Constructed oriented incidence matrix in %g seconds\n', t);
 
-% Construct the Cholesky factor for the reduced translational weight graph
-% Laplacian 
-% CTH modified to minimize fill in (return permutation matrix), because
-% running into memory issues for large problems
-% NOTE: (for later) use the permuted version of the Cholesky decomposition 
-% tic();
-% [problem_data.L,flag,problem_data.p] = chol(LWtau(1:end-1, 1:end-1), 'lower','vector');
-% [problem_data.L] = chol(LWtau(1:end-1, 1:end-1), 'lower');
-% t = toc();
-% fprintf('Computed lower-triangular factor of reduced translational weight graph Laplacian in %g seconds\n', t);
+    % Construct the reduced oriented incidence matrix
+    problem_data.Ared = problem_data.A(1:problem_data.n-1, :);
 
-% Cache a couple of various useful products
-fprintf('Caching additional product matrices ... \n');
+    tic();
+    [T, Omega] = construct_translational_matrices(measurements);
+    V = construct_V_matrix(measurements);
+    t = toc();
+    fprintf('Constructed translational observation and measurement precision matrices in %g seconds\n', t);
 
-problem_data.sqrt_Omega = spdiags(sqrt(spdiags(Omega)), 0, problem_data.m, problem_data.m);
-problem_data.sqrt_Omega_AredT = problem_data.sqrt_Omega * problem_data.Ared';
-problem_data.sqrt_Omega_T = problem_data.sqrt_Omega * problem_data.T;
+    problem_data.T = T;
+    problem_data.Omega = Omega;
+    problem_data.V = V;
+
+
+    % Construct the Laplacian for the translational weight graph
+    tic();
+    LWtau = problem_data.A * problem_data.Omega * problem_data.A';
+    t = toc();
+    fprintf('Constructed Laplacian for the translational weight graph in %g seconds\n', t);
+    problem_data.LWtau = LWtau;
+
+    % Construct the Cholesky factor for the reduced translational weight graph
+    % Laplacian 
+    % CTH modified to minimize fill in (return permutation matrix), because
+    % running into memory issues for large problems
+    % NOTE: (for later) use the permuted version of the Cholesky decomposition 
+    % tic();
+    % [problem_data.L,flag,problem_data.p] = chol(LWtau(1:end-1, 1:end-1), 'lower','vector');
+    % [problem_data.L] = chol(LWtau(1:end-1, 1:end-1), 'lower');
+    % t = toc();
+    % fprintf('Computed lower-triangular factor of reduced translational weight graph Laplacian in %g seconds\n', t);
+
+    % Cache a couple of various useful products
+    fprintf('Caching additional product matrices ... \n');
+
+    problem_data.sqrt_Omega = spdiags(sqrt(spdiags(Omega)), 0, problem_data.m, problem_data.m);
+    problem_data.sqrt_Omega_AredT = problem_data.sqrt_Omega * problem_data.Ared';
+    problem_data.sqrt_Omega_T = problem_data.sqrt_Omega * problem_data.T;
 
 end
 

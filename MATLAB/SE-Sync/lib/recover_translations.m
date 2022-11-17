@@ -17,7 +17,8 @@ function t = recover_translations(R, problem_data)
 % t = - R * V' * LWtau^pinv
 if isfield(problem_data,'Q_bt')
     b = problem_data.VpBar_Y_Vst'*R';
-    t = lsqminnorm(problem_data.L_s,b)';
+%     t = lsqminnorm(problem_data.L_s,b)';
+    t = (problem_data.L_s \ b)';
 else
     t = - (problem_data.LWtau \ (problem_data.V * R'))';
 end
