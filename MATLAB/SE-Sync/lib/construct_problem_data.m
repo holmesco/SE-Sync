@@ -21,6 +21,10 @@ function problem_data = construct_problem_data(measurements)
 %     of the rotational part of the kth measurement. 
 % tau:  An m-dimensional cell array whose kth element gives the precision
 %     of the translational part of the kth measurement.
+% lmFlag: An mx1 dimensional array of booleans indicating whether the
+%     measurement is a landmark measurement (true) or a pose measurement
+%     (false). It is expected that the relative rotation measurement
+%     associated with landmarks is set to a matrix of zeros.
 %
 % 
 %

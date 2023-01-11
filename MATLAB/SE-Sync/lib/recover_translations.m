@@ -15,9 +15,12 @@ function t = recover_translations(R, problem_data)
 % we see that (1) is equivalent to
 %
 % t = - R * V' * LWtau^pinv
+% Check if we are running landmark based SLAM
 if isfield(problem_data,'Q_bt')
+    % Load stored RHS
     b = problem_data.VpBar_Y_Vst'*R';
 %     t = lsqminnorm(problem_data.L_s,b)';
+    % Invert the laplacian matrix to get all translations.
     t = (problem_data.L_s \ b)';
 else
     t = - (problem_data.LWtau \ (problem_data.V * R'))';
