@@ -28,7 +28,7 @@ To solve for landmark locations in addition to solving pose-graph SLAM, the user
 | ``tau`` |  An m-dimensional cell array whose $k^{th}$ element gives the precision of the translational part of the $k^{th}$ measurement.|
 | <mark style="background:blue"> `` lmFlag `` </mark> | An mx1 dimensional array of booleans indicating whether the measurement is a landmark measurement (true) or a pose measurement (false). It is expected that the relative rotation measurement associated with landmarks is set to a 3x3 matrix of zeros.|
 
-When defining the ``edges`` structure, the first $ N_p $ states represent the poses and the last $ N_m $ states represent the landmarks $(N = N_p + N_m )$. 
+When defining the ``edges`` structure, the first $N_p$ states represent the poses and the last $N_m$ states represent the landmarks $(N = N_p + N_m )$. 
 
 Once the input ``measurements`` structure is assembled as defined above, the ``SE_sync`` function can be called normally.
 
